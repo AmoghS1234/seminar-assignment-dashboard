@@ -8,6 +8,7 @@ import { db } from '../firebase';
 
 // --- 1. CONFIG & DATA ---
 const SESSION_ID = 'vibe-live';
+const JOIN_URL = "https://assignment-dashboard-lovat.vercel.app/";
 
 const FUN_FACTS = [
   { text: "The first computer bug was an actual moth found in a relay in 1947.", icon: "bug" },
@@ -31,11 +32,11 @@ const ParticleBackground = () => {
     let width = canvas.width = window.innerWidth;
     let height = canvas.height = window.innerHeight;
     
-    const particles = Array.from({ length: 50 }, () => ({
+    const particles = Array.from({ length: 40 }, () => ({
       x: Math.random() * width,
       y: Math.random() * height,
       size: Math.random() * 2 + 0.5,
-      speedY: Math.random() * 0.2 + 0.1,
+      speedY: Math.random() * 0.2 + 0.05, 
       opacity: Math.random() * 0.5 + 0.1
     }));
 
@@ -298,28 +299,31 @@ export default function ProjectorView() {
 
       <AnimatePresence mode="wait">
         
-        {/* PHASE 0: IDLE / THANK YOU */}
-        {(gameState.status === 'closed' || gameState.status === 'idle') && (
+        {/* PHASE 0: IDLE (QR CODE) */}
+        {gameState.status === 'idle' && (
           <motion.div 
-            key="closed"
+            key="idle"
             initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.05 }}
-            className="flex flex-col items-center justify-center space-y-6 relative z-10 h-full"
+            className="flex flex-col items-center justify-center space-y-8 relative z-10 h-full"
           >
-            {gameState.status === 'idle' ? (
-               <>
-                 <div className="p-8 bg-white/5 border border-white/10 rounded-full animate-pulse"><Lock size={64} className="text-gray-500" /></div>
-                 <h1 className="text-7xl font-black text-gray-500 tracking-widest uppercase">AWAITING SIGNAL</h1>
-               </>
-            ) : (
-               <>
-                 <div className="p-8 bg-green-500/10 border border-green-500/30 rounded-full animate-pulse"><Trophy size={80} className="text-green-500" /></div>
-                 <h1 className="text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-blue-500 tracking-tighter uppercase text-center leading-tight">MISSION<br/>ACCOMPLISHED</h1>
-               </>
-            )}
+            <div className="text-center space-y-2">
+              <h1 className="text-8xl font-black text-white tracking-tighter">
+                JOIN <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-600">SESSION</span>
+              </h1>
+              <p className="text-3xl text-gray-400 font-mono tracking-widest">assignment-dashboard-lovat.vercel.app</p>
+            </div>
+
+            <div className="p-6 bg-white rounded-3xl shadow-[0_0_80px_rgba(255,255,255,0.15)]">
+              <img 
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=https://assignment-dashboard-lovat.vercel.app`} 
+                alt="Join QR Code"
+                className="w-[350px] h-[350px] mix-blend-multiply"
+              />
+            </div>
           </motion.div>
         )}
 
-        {/* PHASE 1: ACTIVE STATE */}
+        {/* PHASE 1: ACTIVE STATE (Timer) */}
         {gameState.status === 'active' && (
           <motion.div 
             key="active"
@@ -334,22 +338,10 @@ export default function ProjectorView() {
                      animate={{ scale: 1, opacity: 1 }} 
                      className="text-[8rem] font-black text-red-600 tracking-tighter drop-shadow-[0_0_60px_rgba(220,38,38,0.6)] uppercase font-mono text-center leading-none"
                    >
-                     SYSTEM<br/>HALTED
+                     TIME<br/>OUT
                    </motion.div>
                 ) : (
-                   <div className="relative">
-                       {/* Centered Pause Indicator */}
-                       {!gameState.isRunning && (
-                          <div className="absolute inset-0 flex items-center justify-center z-20">
-                             <div className="bg-yellow-500/90 text-black px-8 py-3 rounded-xl font-black text-4xl tracking-widest flex items-center gap-3 shadow-2xl animate-pulse">
-                                <Activity size={36} /> PAUSED
-                             </div>
-                          </div>
-                       )}
-                       <div className={clsx(!gameState.isRunning && "opacity-20 blur-sm transition-all duration-500")}>
-                           <DigitalTimer timeLeft={timeLeft} isUrgent={isCritical} />
-                       </div>
-                   </div>
+                   <DigitalTimer timeLeft={timeLeft} isUrgent={isCritical} />
                 )}
              </div>
 
@@ -388,7 +380,7 @@ export default function ProjectorView() {
           </motion.div>
         )}
 
-        {/* PHASE 2: LEADERBOARD */}
+        {/* PHASE 2: REVEALED (Leaderboard) */}
         {gameState.status === 'revealed' && (
           <motion.div 
             key="leaderboard"
@@ -428,6 +420,23 @@ export default function ProjectorView() {
                   </motion.div>
                 ))}
              </div>
+          </motion.div>
+        )}
+        
+        {/* PHASE 3: CLOSED (Mission Accomplished) */}
+        {gameState.status === 'closed' && (
+          <motion.div 
+            key="closed"
+            initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.05 }}
+            className="flex flex-col items-center justify-center space-y-6 relative z-10 h-full"
+          >
+            <div className="p-8 bg-green-500/10 border border-green-500/30 rounded-full animate-pulse">
+              <Trophy size={80} className="text-green-500" />
+            </div>
+            <h1 className="text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-blue-500 tracking-tighter uppercase text-center leading-tight">
+              MISSION<br/>ACCOMPLISHED
+            </h1>
+            <p className="text-2xl text-gray-500 font-mono tracking-[0.3em] mt-4">SESSION CONCLUDED</p>
           </motion.div>
         )}
       </AnimatePresence>
