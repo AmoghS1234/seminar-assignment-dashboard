@@ -5,7 +5,6 @@
 :root {
   background-color: #000000;
   color: #ffffff;
-  overflow: hidden; /* Prevent scrolling on the projector */
 }
 
 body {
