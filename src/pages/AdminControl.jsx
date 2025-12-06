@@ -51,7 +51,6 @@ const AdminControl = () => {
 
   // --- 2. REAL-TIME LISTENER ---
   useEffect(() => {
-    // FIX: Order by 'joinedAt' ensures ALL teams appear, even if they haven't acted yet
     const q = query(collection(db, `sessions/${SESSION_ID}/players`), orderBy("joinedAt", "desc"));
     
     const unsub = onSnapshot(q, (snapshot) => {
@@ -62,22 +61,17 @@ const AdminControl = () => {
         return { ...data, id: d.id, pending };
       });
 
-      // Client-side Sort: Pending First -> Then Finished -> Then Others
       const sortedPlayers = players.sort((a, b) => {
          const aPending = a.pending.length > 0 ? 2 : 0;
          const bPending = b.pending.length > 0 ? 2 : 0;
-         
          const aDone = (a.projectsCompleted || 0) >= 5 ? 1 : 0;
          const bDone = (b.projectsCompleted || 0) >= 5 ? 1 : 0;
-         
          const score = (bPending - aPending) || (bDone - aDone);
-         // Tie-breaker: Join time
          return score !== 0 ? score : (b.joinedAt?.seconds || 0) - (a.joinedAt?.seconds || 0);
       });
 
       setAllPlayers(sortedPlayers);
 
-      // Metrics
       let active = 0, finished = 0, pending = 0;
       players.forEach(p => {
         const count = (p.completedProjects?.length) || (p.projectsCompleted || 0);
@@ -121,13 +115,27 @@ const AdminControl = () => {
     setConfirmReset(false); setSafetyLocked(true);
   };
 
+  const handleExport = async () => {
+    try {
+      let csvContent = "data:text/csv;charset=utf-8,Name,Score,Projects Completed\n";
+      allPlayers.forEach(p => {
+        csvContent += `${p.name},${p.score},${p.projectsCompleted || 0}\n`;
+      });
+      const link = document.createElement("a");
+      link.href = encodeURI(csvContent);
+      link.download = "hackathon_results.csv";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (e) { alert("Export failed"); }
+  };
+
   // --- RENDER ---
   if (loading) return <div className="min-h-screen bg-black flex items-center justify-center text-purple-500 font-mono animate-pulse">SYSTEM_BOOT...</div>;
   if (!isAuthenticated) return <AdminLogin onLoginSuccess={() => setIsAuthenticated(true)} />;
 
   const currentStatus = gameState?.status || 'offline';
   
-  // Filter for search
   const displayedPlayers = allPlayers.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
@@ -143,7 +151,14 @@ const AdminControl = () => {
                 <div><h1 className="text-3xl font-black text-white tracking-tighter">ADMIN <span className="text-purple-500">CONSOLE</span></h1></div>
             </div>
             <div className="flex gap-3">
-                 <button onClick={handleLogout} className="p-3 bg-white/5 hover:bg-red-500/10 border border-white/10 rounded-xl text-gray-400 hover:text-red-400"><LogOut size={20}/></button>
+                 <button onClick={handleExport} className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-xs font-bold text-gray-400 hover:text-white flex items-center gap-2"><Download size={14}/> EXPORT</button>
+                 {/* UPDATED LOGOUT BUTTON */}
+                 <button 
+                   onClick={handleLogout} 
+                   className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-xl text-red-400 font-bold text-xs transition-colors"
+                 >
+                   <LogOut size={14}/> LOGOUT
+                 </button>
             </div>
         </div>
 
@@ -157,44 +172,40 @@ const AdminControl = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             
-            {/* LEFT: SESSION CONTROLS (4 Cols) */}
+            {/* LEFT: CONTROLS */}
             <div className="lg:col-span-4 space-y-6">
                 
                 {/* TIMER */}
                 <div className="bg-[#0A0A0A] border border-white/10 rounded-3xl p-6 space-y-6">
                     <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2"><Clock size={14} /> Timer Control</h3>
                     
-                    {/* Show Controls regardless of state so you can restart easily */}
-                    <div className="space-y-4">
-                        {/* Time Input */}
-                        <div>
-                            <label className="text-xs text-gray-400 font-bold ml-1 mb-1 block">Duration (Minutes)</label>
-                            <input type="number" value={customTime} onChange={(e) => setCustomTime(Number(e.target.value))} className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white font-mono text-lg outline-none" />
-                        </div>
-                        
-                        {/* Action Buttons */}
-                        {gameState.status === 'active' ? (
-                           <div className="space-y-4">
-                                <div className="text-center py-4 bg-white/5 rounded-xl border border-white/5">
-                                   <div className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Time Remaining</div>
-                                   <div className={clsx("text-4xl font-mono font-bold", gameState.isRunning ? "text-white" : "text-yellow-500")}>
-                                      {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
-                                   </div>
-                                   {!gameState.isRunning && <div className="text-[10px] text-yellow-500 font-bold mt-1 animate-pulse">PAUSED</div>}
-                                </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                   {gameState.isRunning ? (
-                                      <button onClick={pauseTimer} className="py-4 rounded-xl bg-yellow-500/10 text-yellow-500 border border-yellow-500/30 font-bold text-xs hover:bg-yellow-500/20 flex items-center justify-center gap-2"><Pause size={16} fill="currentColor" /> PAUSE</button>
-                                   ) : (
-                                      <button onClick={resumeTimer} className="py-4 rounded-xl bg-green-500/10 text-green-500 border border-green-500/30 font-bold text-xs hover:bg-green-500/20 flex items-center justify-center gap-2"><Play size={16} fill="currentColor" /> RESUME</button>
-                                   )}
-                                   <button onClick={stopSession} className="py-4 rounded-xl bg-red-500/10 text-red-500 border border-red-500/30 font-bold text-xs hover:bg-red-500/20 flex items-center justify-center gap-2"><Square size={16} fill="currentColor" /> END</button>
-                                </div>
-                           </div>
-                        ) : (
+                    {gameState.status === 'idle' || gameState.status === 'revealed' || gameState.status === 'closed' ? (
+                        <div className="space-y-4">
+                            <div>
+                                <label className="text-xs text-gray-400 font-bold ml-1 mb-1 block">Duration (Minutes)</label>
+                                <input type="number" value={customTime} onChange={(e) => setCustomTime(Number(e.target.value))} className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white font-mono text-lg outline-none" />
+                            </div>
                             <button onClick={handleStartSession} className="w-full py-4 rounded-xl font-bold text-sm bg-white text-black hover:bg-gray-200 shadow-lg flex items-center justify-center gap-2"><Play size={16} fill="currentColor" /> START SESSION</button>
-                        )}
-                    </div>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            <div className="text-center py-4 bg-white/5 rounded-xl border border-white/5">
+                               <div className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Time Remaining</div>
+                               <div className={clsx("text-4xl font-mono font-bold", gameState.isRunning ? "text-white" : "text-yellow-500")}>
+                                  {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
+                               </div>
+                               {!gameState.isRunning && <div className="text-[10px] text-yellow-500 font-bold mt-1 animate-pulse">PAUSED</div>}
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                               {gameState.isRunning ? (
+                                  <button onClick={pauseTimer} className="py-4 rounded-xl bg-yellow-500/10 text-yellow-500 border border-yellow-500/30 font-bold text-xs hover:bg-yellow-500/20 flex items-center justify-center gap-2"><Pause size={16} fill="currentColor" /> PAUSE</button>
+                               ) : (
+                                  <button onClick={resumeTimer} className="py-4 rounded-xl bg-green-500/10 text-green-500 border border-green-500/30 font-bold text-xs hover:bg-green-500/20 flex items-center justify-center gap-2"><Play size={16} fill="currentColor" /> RESUME</button>
+                               )}
+                               <button onClick={stopSession} className="py-4 rounded-xl bg-red-500/10 text-red-500 border border-red-500/30 font-bold text-xs hover:bg-red-500/20 flex items-center justify-center gap-2"><Square size={16} fill="currentColor" /> END</button>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* REVEAL */}
@@ -216,10 +227,8 @@ const AdminControl = () => {
                 </div>
             </div>
 
-            {/* RIGHT: TEAM GRID (8 Cols) */}
+            {/* RIGHT: TEAM GRID */}
             <div className="lg:col-span-8 flex flex-col gap-4 h-[800px]">
-                
-                {/* Search Bar */}
                 <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center gap-4">
                     <Search className="text-gray-500" size={20} />
                     <input 
@@ -231,7 +240,6 @@ const AdminControl = () => {
                     />
                 </div>
 
-                {/* THE GRID OF TEAMS */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto custom-scrollbar pr-2 content-start flex-1">
                    {displayedPlayers.length === 0 && <div className="col-span-full text-center py-20 text-gray-600 opacity-50 font-mono uppercase tracking-widest">No teams found</div>}
                    
@@ -310,7 +318,7 @@ const AdminControl = () => {
                       <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-3xl font-bold text-white">{inspectingUser.name.charAt(0)}</div>
                       <div>
                          <h2 className="text-3xl font-black text-white tracking-tight">{inspectingUser.name}</h2>
-                         <div className="text-sm text-gray-400 font-mono">Total Score: <span className="text-purple-400 font-bold">{inspectingUser.score}</span></div>
+                         <div className="text-sm text-gray-400 font-mono">Score: <span className="text-purple-400 font-bold">{inspectingUser.score}</span></div>
                       </div>
                    </div>
                 </div>
@@ -325,7 +333,7 @@ const AdminControl = () => {
                               <div className={clsx("w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm", isPending ? "bg-purple-500 text-white" : isDone ? "bg-green-500/20 text-green-400" : "bg-white/10 text-gray-500")}>{p.id}</div>
                               <div>
                                   <div className={clsx("font-bold", isPending ? "text-white" : "text-gray-400")}>{p.name}</div>
-                                  {isPending && inspectingUser.submissionUrl && <a href={inspectingUser.submissionUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-blue-400 hover:text-blue-300 text-xs mt-1 hover:underline"><ExternalLink size={10} /> Link</a>}
+                                  {isPending && inspectingUser.submissionUrl && <a href={inspectingUser.submissionUrl.startsWith('http') ? inspectingUser.submissionUrl : `https://${inspectingUser.submissionUrl}`} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-blue-400 hover:text-blue-300 text-xs mt-1 hover:underline"><ExternalLink size={10} /> Link</a>}
                               </div>
                             </div>
                             {isPending ? (
