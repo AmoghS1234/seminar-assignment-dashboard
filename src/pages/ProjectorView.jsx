@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useGame } from '../context/GameContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Activity, Sparkles, Users, Lock, Trophy } from 'lucide-react';
+import { Activity, Sparkles, Users, Lock, Trophy, Pause, QrCode } from 'lucide-react';
 import { clsx } from 'clsx';
 import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 
 // --- 1. CONFIG & DATA ---
 const SESSION_ID = 'vibe-live';
-const JOIN_URL = "https://assignment-dashboard-lovat.vercel.app/";
+const JOIN_URL = "assignment-dashboard-lovat.vercel.app"; // Shortened for display
+const FULL_JOIN_URL = "https://assignment-dashboard-lovat.vercel.app/";
 
 const FUN_FACTS = [
   { text: "The first computer bug was an actual moth found in a relay in 1947.", icon: "bug" },
@@ -32,11 +33,11 @@ const ParticleBackground = () => {
     let width = canvas.width = window.innerWidth;
     let height = canvas.height = window.innerHeight;
     
-    const particles = Array.from({ length: 40 }, () => ({
+    const particles = Array.from({ length: 50 }, () => ({
       x: Math.random() * width,
       y: Math.random() * height,
       size: Math.random() * 2 + 0.5,
-      speedY: Math.random() * 0.2 + 0.05, 
+      speedY: Math.random() * 0.2 + 0.1,
       opacity: Math.random() * 0.5 + 0.1
     }));
 
@@ -93,16 +94,17 @@ const BouncyDigit = ({ value }) => (
   </div>
 );
 
-const DigitalTimer = ({ timeLeft, isUrgent }) => {
+const DigitalTimer = ({ timeLeft, isUrgent, isPaused }) => {
   const mins = Math.floor(timeLeft / 60).toString().padStart(2, '0');
   const secs = (timeLeft % 60).toString().padStart(2, '0');
 
   return (
-    <div className="relative flex items-center justify-center p-4">
+    <div className="relative flex flex-col items-center justify-center p-4">
        <div 
          className={clsx(
-           "text-[16rem] lg:text-[20rem] font-mono font-bold leading-none flex items-center justify-center gap-2 tracking-tighter filter drop-shadow-[0_0_40px_rgba(168,85,247,0.3)]",
-           isUrgent ? "text-red-500" : "text-white"
+           "text-[14rem] lg:text-[18rem] font-mono font-bold leading-none flex items-center justify-center gap-2 tracking-tighter filter drop-shadow-[0_0_40px_rgba(168,85,247,0.3)]",
+           isUrgent ? "text-red-500" : "text-white",
+           isPaused && "opacity-50 blur-sm"
          )}
        >
           <div className="flex">
@@ -115,6 +117,14 @@ const DigitalTimer = ({ timeLeft, isUrgent }) => {
             <BouncyDigit value={secs[1]} />
           </div>
        </div>
+       
+       {isPaused && (
+         <div className="absolute inset-0 flex items-center justify-center z-20">
+            <div className="bg-yellow-500 text-black px-8 py-4 rounded-2xl font-black text-4xl tracking-widest flex items-center gap-4 shadow-2xl animate-pulse">
+               <Pause size={40} fill="currentColor" /> PAUSED
+            </div>
+         </div>
+       )}
     </div>
   );
 };
@@ -284,12 +294,21 @@ export default function ProjectorView() {
       <ParticleBackground />
       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 opacity-50" />
 
-      {/* --- STATUS HEADER --- */}
+      {/* --- TOP BAR (STATUS + JOIN INFO) --- */}
       <div className="absolute top-8 left-8 z-50">
          <div className="px-4 py-2 rounded-full bg-red-500/10 border border-red-500/20 text-sm font-mono text-red-400 flex items-center gap-2 shadow-lg">
             <Lock size={14} /> DATABASE LOCKED
          </div>
       </div>
+
+      {/* NEW: JOIN INFO PILL (Visible during Active Mode too) */}
+      <div className="absolute top-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4">
+         <div className="px-6 py-2 rounded-full bg-blue-600/10 border border-blue-500/30 text-sm font-mono text-blue-300 flex items-center gap-3 shadow-lg backdrop-blur-md">
+            <QrCode size={16} className="text-white" /> 
+            <span className="font-bold tracking-widest text-white">{JOIN_URL}</span>
+         </div>
+      </div>
+
       <div className="absolute top-8 right-8 z-50">
          <div className="px-4 py-2 rounded-full bg-white/5 border border-white/10 text-sm font-mono text-gray-300 flex items-center gap-2 shadow-lg backdrop-blur-md">
             <Users size={14} className="text-blue-400" /> 
@@ -299,7 +318,7 @@ export default function ProjectorView() {
 
       <AnimatePresence mode="wait">
         
-        {/* PHASE 0: IDLE (QR CODE) */}
+        {/* PHASE 0: IDLE (BIG QR CODE) */}
         {gameState.status === 'idle' && (
           <motion.div 
             key="idle"
@@ -310,12 +329,12 @@ export default function ProjectorView() {
               <h1 className="text-8xl font-black text-white tracking-tighter">
                 JOIN <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-600">SESSION</span>
               </h1>
-              <p className="text-3xl text-gray-400 font-mono tracking-widest">assignment-dashboard-lovat.vercel.app</p>
+              <p className="text-3xl text-gray-400 font-mono tracking-widest">{JOIN_URL}</p>
             </div>
 
             <div className="p-6 bg-white rounded-3xl shadow-[0_0_80px_rgba(255,255,255,0.15)]">
               <img 
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=https://assignment-dashboard-lovat.vercel.app`} 
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=${FULL_JOIN_URL}`} 
                 alt="Join QR Code"
                 className="w-[350px] h-[350px] mix-blend-multiply"
               />
@@ -341,7 +360,7 @@ export default function ProjectorView() {
                      TIME<br/>OUT
                    </motion.div>
                 ) : (
-                   <DigitalTimer timeLeft={timeLeft} isUrgent={isCritical} />
+                   <DigitalTimer timeLeft={timeLeft} isUrgent={isCritical} isPaused={!gameState.isRunning} />
                 )}
              </div>
 
