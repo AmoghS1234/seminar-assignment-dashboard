@@ -9,7 +9,7 @@ import { doc, updateDoc, serverTimestamp, arrayUnion } from 'firebase/firestore'
 import { db } from '../firebase';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// --- NEW PROJECT CONFIGURATION ---
+// --- PROJECT CONFIGURATION ---
 const PROJECTS = [
   { 
     id: 1, 
@@ -43,7 +43,7 @@ const PROJECTS = [
     id: 5, 
     name: "Portfolio", 
     desc: "Personal Website (Bonus)",
-    isBonus: true,
+    isBonus: true, // Bonus Flag
     details: "Design and deploy a personal portfolio website showcasing your skills, projects, and bio. It must be responsive and deployed live.",
     criteria: ["Responsive Layout", "About & Projects Sections", "Live Deployment URL"]
   }
@@ -109,7 +109,9 @@ const StudentDeck = () => {
               <Terminal size={32} className="text-white sm:w-10 sm:h-10" />
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white text-center">OPERATIVE LOGIN</h1>
-            <p className="text-gray-500 text-xs sm:text-sm font-mono mt-2 uppercase tracking-widest">Session: {gameState.status === 'active' ? <span className="text-green-400">LIVE</span> : <span className="text-red-400">OFFLINE</span>}</p>
+            <p className="text-gray-500 text-xs sm:text-sm font-mono mt-2 uppercase tracking-widest">
+              Session: {gameState.status === 'active' ? <span className="text-green-400">LIVE</span> : <span className="text-red-400">OFFLINE</span>}
+            </p>
           </div>
           <div className="space-y-4 sm:space-y-6">
             <div className="space-y-2">
@@ -164,6 +166,9 @@ const StudentDeck = () => {
   const secs = (timeLeft % 60).toString().padStart(2, '0');
   const isTimeUp = timeLeft === 0;
 
+  // BONUS LOGIC: Check if at least 1 project (IDs 1-4) is completed
+  const hasCompletedBasic = completedIds.some(id => [1,2,3,4].includes(id));
+
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans pb-24 sm:pb-10 overflow-y-auto">
       
@@ -197,7 +202,10 @@ const StudentDeck = () => {
             {PROJECTS.map((project, index) => {
                const isDone = completedIds.includes(project.id);
                const isPending = pendingIds.includes(project.id);
-               const isLocked = isTimeUp && !isDone && !isPending;
+               
+               // CHECK BONUS LOCK STATUS
+               const isBonusLocked = project.isBonus && !hasCompletedBasic;
+               const isLocked = (isTimeUp || isBonusLocked) && !isDone && !isPending;
                
                return (
                  <motion.div key={project.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }} className={clsx("p-5 sm:p-6 rounded-2xl sm:rounded-3xl border transition-all relative overflow-hidden group flex flex-col h-44 sm:h-52 justify-between", isDone ? "bg-green-900/10 border-green-500/20" : isPending ? "bg-yellow-500/5 border-yellow-500/20" : isLocked ? "bg-[#0A0A0A] border-white/5 opacity-50 grayscale" : "bg-[#0A0A0A] border-white/10 hover:border-purple-500/40 hover:bg-white/5")}>
@@ -208,7 +216,7 @@ const StudentDeck = () => {
                           {isPending && <Loader2 className="text-yellow-500 animate-spin" size={24} />}
                           {isLocked && <Lock className="text-red-500" size={24} />}
                        </div>
-                       <button onClick={() => setInfoModalProject(project)} className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-gray-500 hover:text-white transition-colors" title="View Instructions"><Info size={18} /></button>
+                       {!isLocked && <button onClick={() => setInfoModalProject(project)} className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-gray-500 hover:text-white transition-colors" title="View Instructions"><Info size={18} /></button>}
                     </div>
                     <div>
                        <div className="flex items-center gap-2">
@@ -218,7 +226,9 @@ const StudentDeck = () => {
                        <p className="text-xs sm:text-sm text-gray-500 uppercase tracking-wide font-mono">{project.desc}</p>
                     </div>
                     <div className="pt-3 sm:pt-4 border-t border-white/5 flex items-center justify-between">
-                       <span className={clsx("text-[10px] sm:text-xs font-bold uppercase tracking-wider", isDone ? "text-green-600" : isPending ? "text-yellow-600" : isLocked ? "text-red-600" : "text-gray-600")}>{isDone ? "SECURE" : isPending ? "VERIFYING" : isLocked ? "LOCKED" : "AVAILABLE"}</span>
+                       <span className={clsx("text-[10px] sm:text-xs font-bold uppercase tracking-wider", isDone ? "text-green-600" : isPending ? "text-yellow-600" : isLocked ? "text-red-600" : "text-gray-600")}>
+                          {isDone ? "SECURE" : isPending ? "VERIFYING" : isBonusLocked ? "COMPLETE 1 MISSION" : isTimeUp ? "LOCKED" : "AVAILABLE"}
+                       </span>
                        {!isDone && !isPending && !isLocked && <button onClick={() => openSubmitModal(project)} className="px-4 py-1.5 sm:px-5 sm:py-2 rounded-xl bg-white text-black font-bold text-xs sm:text-sm hover:bg-gray-200 active:scale-95 transition-all flex items-center gap-2">Submit <PlayCircle size={14} /></button>}
                     </div>
                  </motion.div>
@@ -229,15 +239,15 @@ const StudentDeck = () => {
 
       {/* --- SUBMIT MODAL --- */}
       <AnimatePresence>
-        {selectedProject && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm" onClick={closeSubmitModal}>
+        {submitModalProject && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm" onClick={() => setSubmitModalProject(null)}>
             <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="w-full sm:max-w-lg bg-[#111] border-t sm:border border-white/10 rounded-t-[2rem] sm:rounded-[2rem] p-6 sm:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-               <button onClick={() => closeSubmitModal(null)} className="absolute top-6 right-6 text-gray-500 hover:text-white"><X size={20} /></button>
+               <button onClick={() => setSubmitModalProject(null)} className="absolute top-6 right-6 text-gray-500 hover:text-white"><X size={20} /></button>
                {timeLeft === 0 ? (
                   <div className="text-center py-10"><AlertTriangle size={48} className="text-red-500 mx-auto mb-4" /><h2 className="text-2xl font-bold text-white">Submission Failed</h2><p className="text-gray-500 mt-2">The session timer has expired.</p></div>
                ) : (
                    <>
-                    <div className="mb-6 pt-2"><div className="text-xs font-bold text-purple-400 uppercase tracking-widest mb-1">Upload Protocol</div><h2 className="text-2xl sm:text-3xl font-black text-white">{selectedProject.name}</h2></div>
+                    <div className="mb-6 pt-2"><div className="text-xs font-bold text-purple-400 uppercase tracking-widest mb-1">Upload Protocol</div><h2 className="text-2xl sm:text-3xl font-black text-white">{submitModalProject.name}</h2></div>
                     <div className="space-y-5 sm:space-y-6">
                         <div className="space-y-2"><label className="text-sm font-bold text-gray-500 ml-1">GitHub / Vercel URL</label><div className="relative"><Link className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={20} /><input type="url" autoFocus value={urlInput} onChange={(e) => setUrlInput(e.target.value)} placeholder="https://..." className="w-full bg-black border border-white/20 text-white pl-12 pr-4 py-4 sm:py-5 rounded-2xl focus:outline-none focus:border-purple-500 transition-all text-base sm:text-lg" /></div></div>
                         <button onClick={confirmSubmission} disabled={!urlInput || isSubmitting} className={clsx("w-full py-4 sm:py-5 rounded-2xl font-bold text-base sm:text-lg flex items-center justify-center gap-3 transition-all active:scale-[0.98] shadow-lg shadow-purple-900/20", !urlInput ? "bg-white/10 text-gray-500 cursor-not-allowed" : "bg-white text-black hover:bg-gray-200")}>{isSubmitting ? <Loader2 size={24} className="animate-spin" /> : <>Confirm Submission <Send size={20} /></>}</button>
@@ -258,7 +268,7 @@ const StudentDeck = () => {
                <div className="flex items-start gap-4 mb-6"><div className="p-3 bg-purple-500/20 rounded-xl text-purple-400 border border-purple-500/20"><FileText size={28} /></div><div><div className="text-xs font-bold text-gray-500 uppercase tracking-widest">Briefing</div><h2 className="text-2xl font-black text-white">{infoModalProject.name}</h2></div></div>
                <div className="space-y-6">
                   <p className="text-gray-300 leading-relaxed text-lg">{infoModalProject.details}</p>
-                  <div className="bg-white/5 rounded-2xl p-6 border border-white/5"><h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">Success Criteria</h4><ul className="space-y-3">{infoModalProject.criteria.map((c, i) => (<li key={i} className="flex items-start gap-3 text-gray-300 text-sm"><CheckCircle2 size={18} className="text-green-500 shrink-0 mt-0.5" />{c}</li>))}</ul></div>
+                  <div className="bg-white/5 rounded-2xl p-5 border border-white/5"><h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Success Criteria</h4><ul className="space-y-3">{infoModalProject.criteria.map((c, i) => (<li key={i} className="flex items-start gap-3 text-gray-300 text-sm"><CheckCircle2 size={16} className="text-green-500 shrink-0 mt-0.5" />{c}</li>))}</ul></div>
                </div>
                <button onClick={() => setInfoModalProject(null)} className="w-full py-4 mt-6 text-white font-bold text-sm sm:hidden bg-white/10 rounded-xl">Close Briefing</button>
             </motion.div>
