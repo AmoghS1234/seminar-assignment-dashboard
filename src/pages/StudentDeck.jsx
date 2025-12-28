@@ -43,7 +43,7 @@ const PROJECTS = [
     id: 5, 
     name: "Portfolio", 
     desc: "Personal Website (Bonus)",
-    isBonus: true, // Bonus Flag
+    isBonus: true,
     details: "Design and deploy a personal portfolio website showcasing your skills, projects, and bio. It must be responsive and deployed live.",
     criteria: ["Responsive Layout", "About & Projects Sections", "Live Deployment URL"]
   }
@@ -55,7 +55,9 @@ const StudentDeck = () => {
   const { currentUser, registerUser, timeLeft, gameState } = useGame();
   const [nameInput, setNameInput] = useState('');
   
-  // Modal States
+  // --- MODAL STATES ---
+  // selectedProject = The project currently open for SUBMISSION
+  // infoModalProject = The project currently open for DETAILS
   const [selectedProject, setSelectedProject] = useState(null);
   const [infoModalProject, setInfoModalProject] = useState(null);
   
@@ -203,7 +205,7 @@ const StudentDeck = () => {
                const isDone = completedIds.includes(project.id);
                const isPending = pendingIds.includes(project.id);
                
-               // CHECK BONUS LOCK STATUS
+               // Bonus Lock Logic
                const isBonusLocked = project.isBonus && !hasCompletedBasic;
                const isLocked = (isTimeUp || isBonusLocked) && !isDone && !isPending;
                
@@ -216,7 +218,13 @@ const StudentDeck = () => {
                           {isPending && <Loader2 className="text-yellow-500 animate-spin" size={24} />}
                           {isLocked && <Lock className="text-red-500" size={24} />}
                        </div>
-                       {!isLocked && <button onClick={() => setInfoModalProject(project)} className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-gray-500 hover:text-white transition-colors" title="View Instructions"><Info size={18} /></button>}
+                       
+                       {/* INFO BUTTON (Always visible unless locked by time) */}
+                       {!isTimeUp && (
+                         <button onClick={() => setInfoModalProject(project)} className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-gray-500 hover:text-white transition-colors" title="View Instructions">
+                            <Info size={18} />
+                         </button>
+                       )}
                     </div>
                     <div>
                        <div className="flex items-center gap-2">
@@ -239,15 +247,15 @@ const StudentDeck = () => {
 
       {/* --- SUBMIT MODAL --- */}
       <AnimatePresence>
-        {submitModalProject && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm" onClick={() => setSubmitModalProject(null)}>
+        {selectedProject && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm" onClick={closeSubmitModal}>
             <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="w-full sm:max-w-lg bg-[#111] border-t sm:border border-white/10 rounded-t-[2rem] sm:rounded-[2rem] p-6 sm:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-               <button onClick={() => setSubmitModalProject(null)} className="absolute top-6 right-6 text-gray-500 hover:text-white"><X size={20} /></button>
+               <button onClick={() => closeSubmitModal()} className="absolute top-6 right-6 text-gray-500 hover:text-white"><X size={20} /></button>
                {timeLeft === 0 ? (
                   <div className="text-center py-10"><AlertTriangle size={48} className="text-red-500 mx-auto mb-4" /><h2 className="text-2xl font-bold text-white">Submission Failed</h2><p className="text-gray-500 mt-2">The session timer has expired.</p></div>
                ) : (
                    <>
-                    <div className="mb-6 pt-2"><div className="text-xs font-bold text-purple-400 uppercase tracking-widest mb-1">Upload Protocol</div><h2 className="text-2xl sm:text-3xl font-black text-white">{submitModalProject.name}</h2></div>
+                    <div className="mb-6 pt-2"><div className="text-xs font-bold text-purple-400 uppercase tracking-widest mb-1">Upload Protocol</div><h2 className="text-2xl sm:text-3xl font-black text-white">{selectedProject.name}</h2></div>
                     <div className="space-y-5 sm:space-y-6">
                         <div className="space-y-2"><label className="text-sm font-bold text-gray-500 ml-1">GitHub / Vercel URL</label><div className="relative"><Link className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={20} /><input type="url" autoFocus value={urlInput} onChange={(e) => setUrlInput(e.target.value)} placeholder="https://..." className="w-full bg-black border border-white/20 text-white pl-12 pr-4 py-4 sm:py-5 rounded-2xl focus:outline-none focus:border-purple-500 transition-all text-base sm:text-lg" /></div></div>
                         <button onClick={confirmSubmission} disabled={!urlInput || isSubmitting} className={clsx("w-full py-4 sm:py-5 rounded-2xl font-bold text-base sm:text-lg flex items-center justify-center gap-3 transition-all active:scale-[0.98] shadow-lg shadow-purple-900/20", !urlInput ? "bg-white/10 text-gray-500 cursor-not-allowed" : "bg-white text-black hover:bg-gray-200")}>{isSubmitting ? <Loader2 size={24} className="animate-spin" /> : <>Confirm Submission <Send size={20} /></>}</button>
