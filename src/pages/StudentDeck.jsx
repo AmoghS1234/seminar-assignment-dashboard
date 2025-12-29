@@ -9,7 +9,7 @@ import { doc, updateDoc, serverTimestamp, arrayUnion } from 'firebase/firestore'
 import { db } from '../firebase';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// --- PROJECT CONFIGURATION ---
+// --- NEW PROJECT CONFIGURATION ---
 const PROJECTS = [
   { 
     id: 1, 
@@ -55,9 +55,7 @@ const StudentDeck = () => {
   const { currentUser, registerUser, timeLeft, gameState } = useGame();
   const [nameInput, setNameInput] = useState('');
   
-  // --- MODAL STATES ---
-  // selectedProject = The project currently open for SUBMISSION
-  // infoModalProject = The project currently open for DETAILS
+  // Modal States
   const [selectedProject, setSelectedProject] = useState(null);
   const [infoModalProject, setInfoModalProject] = useState(null);
   
@@ -250,7 +248,7 @@ const StudentDeck = () => {
         {selectedProject && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm" onClick={closeSubmitModal}>
             <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="w-full sm:max-w-lg bg-[#111] border-t sm:border border-white/10 rounded-t-[2rem] sm:rounded-[2rem] p-6 sm:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-               <button onClick={() => closeSubmitModal()} className="absolute top-6 right-6 text-gray-500 hover:text-white"><X size={20} /></button>
+               <button onClick={() => closeSubmitModal(null)} className="absolute top-6 right-6 text-gray-500 hover:text-white"><X size={20} /></button>
                {timeLeft === 0 ? (
                   <div className="text-center py-10"><AlertTriangle size={48} className="text-red-500 mx-auto mb-4" /><h2 className="text-2xl font-bold text-white">Submission Failed</h2><p className="text-gray-500 mt-2">The session timer has expired.</p></div>
                ) : (

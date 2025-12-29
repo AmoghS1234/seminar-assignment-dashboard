@@ -101,11 +101,18 @@ const AdminControl = () => {
     const player = allPlayers.find(p => p.id === userId);
     if (!player) return;
 
+    // Save URL to history
+    const currentLinks = player.submissionLinks || {};
+    if (player.submissionUrl) {
+        currentLinks[projectId] = player.submissionUrl;
+    }
+
     await updateDoc(userRef, {
       score: (player.score || 0) + points,
       status: 'idle',
       pendingProjectIds: arrayRemove(projectId),
       pendingProjectId: null, 
+      submissionLinks: currentLinks,
       completedProjects: arrayUnion(projectId),
       projectsCompleted: (player.projectsCompleted || 0) + 1
     });
@@ -120,10 +127,18 @@ const AdminControl = () => {
 
   const handleExport = async () => {
     try {
-      let csvContent = "data:text/csv;charset=utf-8,Name,Score,Projects Completed\n";
+      let csvContent = "data:text/csv;charset=utf-8,Name,Score,Projects Completed";
+      PROJECTS.forEach(p => { csvContent += `,${p.name} URL`; });
+      csvContent += "\n";
+
       allPlayers.forEach(p => {
-        csvContent += `${p.name},${p.score},${p.projectsCompleted || 0}\n`;
+        const name = `"${p.name.replace(/"/g, '""')}"`;
+        const links = p.submissionLinks || {};
+        let row = `${name},${p.score},${p.projectsCompleted || 0}`;
+        PROJECTS.forEach(proj => { row += `,${links[proj.id] || "N/A"}`; });
+        csvContent += row + "\n";
       });
+
       const link = document.createElement("a");
       link.href = encodeURI(csvContent);
       link.download = "session_results.csv";
@@ -179,9 +194,9 @@ const AdminControl = () => {
                     ) : (
                         <div className="space-y-4">
                             <div className="text-center py-4 bg-white/5 rounded-xl border border-white/5">
-                               <div className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Time Remaining</div>
-                               <div className={clsx("text-4xl font-mono font-bold", gameState.isRunning ? "text-white" : "text-yellow-500")}>{Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}</div>
-                               {!gameState.isRunning && <div className="text-[10px] text-yellow-500 font-bold mt-1 animate-pulse">PAUSED</div>}
+                                <div className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Time Remaining</div>
+                                <div className={clsx("text-4xl font-mono font-bold", gameState.isRunning ? "text-white" : "text-yellow-500")}>{Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}</div>
+                                {!gameState.isRunning && <div className="text-[10px] text-yellow-500 font-bold mt-1 animate-pulse">PAUSED</div>}
                             </div>
                             <div className="grid grid-cols-2 gap-3">
                                {gameState.isRunning ? <button onClick={pauseTimer} className="py-4 rounded-xl bg-yellow-500/10 text-yellow-500 border border-yellow-500/30 font-bold text-xs hover:bg-yellow-500/20 flex items-center justify-center gap-2"><Pause size={16} fill="currentColor" /> PAUSE</button> : <button onClick={resumeTimer} className="py-4 rounded-xl bg-green-500/10 text-green-500 border border-green-500/30 font-bold text-xs hover:bg-green-500/20 flex items-center justify-center gap-2"><Play size={16} fill="currentColor" /> RESUME</button>}
