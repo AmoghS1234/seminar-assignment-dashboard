@@ -285,5 +285,4 @@ const StudentDeck = () => {
     </div>
   );
 };
-
 export default StudentDeck;
